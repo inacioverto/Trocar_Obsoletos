@@ -6,12 +6,14 @@ Imports System.Runtime.InteropServices
 Public Class Form1
     Private ficheiro As FileInfo
     Dim old_dxfs(2, 0) As String
+    Dim stepFile As Boolean = False
 
     Private Sub DataGridView1_DragEnter(sender As Object, e As DragEventArgs) Handles DataGridView1.DragEnter
         If e.Data.GetDataPresent(DataFormats.FileDrop) Then
             e.Effect = DragDropEffects.Copy
         End If
     End Sub
+
 
     Private Sub DataGridView1_DragDrop(ByVal sender As Object, ByVal e As DragEventArgs) Handles DataGridView1.DragDrop
         Dim files() As String
@@ -57,17 +59,21 @@ Public Class Form1
         Application.DoEvents()
     End Sub
 
+
     Private Function Check_ext(ByVal extensao As String, ByVal ficheiro As String) As Integer '0 - OK | 1 - NÃO SUPORTADO | 2 - TXT
         Check_ext = 0
 
-        If extensao.ToLower <> "dxf" And extensao.ToLower <> "pdf" And extensao.ToLower <> "easm" And extensao.ToLower <> "jpg" And extensao.ToLower <> "txt" Then
+        If extensao.ToLower <> "dxf" And extensao.ToLower <> "pdf" And extensao.ToLower <> "easm" And extensao.ToLower <> "jpg" _
+            And extensao.ToLower <> "txt" And extensao.ToLower = "step" And extensao.ToLower = "stp" Then
             Check_ext = 1
         ElseIf extensao.ToLower = "txt" Then
             Call txt_processing(Strings.Left(ficheiro, Strings.Len(ficheiro) - (Strings.Len(extensao) + 1)))
             Check_ext = 2
+        ElseIf extensao.ToLower = "step" Or extensao.ToLower = "stp" Then
+            stepFile = True
         End If
-
     End Function
+
 
     Private Function Check_DG(ByVal ficheiro As String) As Boolean
         Dim a As Integer
@@ -84,6 +90,7 @@ Public Class Form1
         End If
     End Function
 
+
     Private Sub Button_browse_Click(sender As Object, e As EventArgs) Handles Button_browse.Click
         SaveFileDialog1.FileName = "Selecione a pasta do projeto na produção"
         If TextBox_pasta_prod.Text = "" Then
@@ -96,9 +103,11 @@ Public Class Form1
         End If
     End Sub
 
+
     Private Sub Button_sair_Click(sender As Object, e As EventArgs) Handles Button_sair.Click
         End
     End Sub
+
 
     Private Sub Button_Limpar_Click(sender As Object, e As EventArgs) Handles Button_Limpar.Click
         DataGridView1.Rows.Clear()
@@ -106,6 +115,7 @@ Public Class Form1
         Array.Clear(old_dxfs, 0, old_dxfs.Length)
         ReDim old_dxfs(2, 0)
     End Sub
+
 
     Private Sub Button_ok_Click(sender As Object, e As EventArgs) Handles Button_ok.Click
         Dim pasta_prod, origem, ficheiro, extensao, destino, folder1 As String
@@ -162,6 +172,8 @@ Public Class Form1
                         destino = pasta_prod & "3D\"
                     ElseIf extensao.ToLower = "jpg" Then
                         destino = pasta_prod & "ARTIGOS\"
+                    ElseIf extensao.ToLower = "step" Or extensao.ToLower = "stp" Then
+                        destino = pasta_prod & "STEP\"
                     Else
                         introduzir_dados(i, "Obsoleto", "AVISO")
                         change_color(i, "Obsoleto", 1)
@@ -193,7 +205,8 @@ Public Class Form1
                 For i = 0 To DataGridView1.RowCount - 1
                     DataGridView1.CurrentCell = DataGridView1.Rows(i).Cells(0)
                     extensao = DataGridView1.Rows(i).Cells("Extensao").Value
-                    If extensao.ToLower <> "dxf" And extensao.ToLower <> "pdf" And extensao.ToLower <> "easm" And extensao.ToLower <> "eprt" And extensao.ToLower <> "jpg" Then
+                    If extensao.ToLower <> "dxf" And extensao.ToLower <> "pdf" And extensao.ToLower <> "easm" And extensao.ToLower <> "eprt" _
+                        And extensao.ToLower <> "jpg" And extensao.ToLower <> "step" And extensao.ToLower <> "stp" Then
                         introduzir_dados(i, "Obsoleto", "AVISO")
                         change_color(i, "Obsoleto", 1)
                         introduzir_dados(i, "Mover", "Extensão não suportada")
@@ -229,6 +242,7 @@ Public Class Form1
         Button_Limpar.Enabled = True
     End Sub
 
+
     Sub msg_erro(erros As Integer, avisos As Integer)
         If avisos = 0 Then
             If erros = 0 Then
@@ -257,6 +271,7 @@ Public Class Form1
         End If
     End Sub
 
+
     ''' <summary>
     ''' VERIFICA SE AS PASTAS "OBSOLETO" EXISTEM
     ''' CASO NÃO EXISTAM, SÃO CRIADAS
@@ -264,7 +279,7 @@ Public Class Form1
     ''' <param name="pasta"></param>
     ''' <returns>0 - sem pastas; 1 - projeto; 2 - encomenda</returns>
     Function verificar_pastas(ByVal pasta As String) As Integer '0 - sem pastas; 1 - projeto; 2 - encomenda
-        Dim edrw, pdf, dxf, edrw_obsoleto, pdf_obsoleto, dxf_obsoleto, obsoleto, artigos As Boolean
+        Dim edrw, pdf, dxf, edrw_obsoleto, pdf_obsoleto, dxf_obsoleto, obsoleto, artigos, stepFolder, stepObsoleto As Boolean
         Dim answer As Integer
         Dim txt, txt_obsoleto As String
 
@@ -288,6 +303,11 @@ Public Class Form1
             artigos = verificar_subpasta(pasta & "ARTIGOS\")
             If artigos = False Then txt = txt & vbNewLine & "ARTIGOS"
 
+            If stepFile = True Then
+                stepFolder = verificar_subpasta(pasta & "STEP\")
+                If stepFolder = False Then txt = txt & vbNewLine & "STEP"
+            End If
+
             obsoleto = verificar_subpasta(pasta & "OBSOLETO\")
 
             If txt <> "" Then
@@ -308,6 +328,12 @@ Public Class Form1
                     If artigos = False Then
                         MkDir(pasta & "ARTIGOS\")
                     End If
+                    If stepFile = True Then
+                        If stepFolder = False Then
+                            MkDir(pasta & "STEP\")
+                            MkDir(pasta & "STEP\OBSOLETO\")
+                        End If
+                    End If
 
                     edrw_obsoleto = verificar_subpasta(pasta & "3D\OBSOLETO\")
                     If edrw_obsoleto = False Then txt_obsoleto = txt_obsoleto & vbNewLine & "3D"
@@ -318,12 +344,18 @@ Public Class Form1
                     dxf_obsoleto = verificar_subpasta(pasta & "DXF\OBSOLETO\")
                     If dxf_obsoleto = False Then txt_obsoleto = txt_obsoleto & vbNewLine & "DXF"
 
+                    If stepFile = True Then
+                        stepObsoleto = verificar_subpasta(pasta & "STEP\OBSOLETO\")
+                        If stepObsoleto = False Then txt_obsoleto = txt_obsoleto & vbNewLine & "STEP"
+                    End If
+
                     If txt_obsoleto <> "" Then
                         answer = MsgBox("As seguintes pastas OBSOLETO não existem:" & txt_obsoleto & vbNewLine & vbNewLine & "Criar pastas?", MsgBoxStyle.YesNo)
                         If answer = 6 Then 'YES OBSOLETOS
                             If edrw_obsoleto = False Then MkDir(pasta & "3D\OBSOLETO\")
                             If pdf_obsoleto = False Then MkDir(pasta & "PDF\OBSOLETO\")
                             If dxf_obsoleto = False Then MkDir(pasta & "DXF\OBSOLETO\")
+                            If stepFile = True And stepObsoleto = False Then MkDir(pasta & "STEP\OBSOLETO\")
                         Else 'NO OBSOLETOS
                             verificar_pastas = 0
                         End If
@@ -349,18 +381,18 @@ Public Class Form1
                 dxf_obsoleto = verificar_subpasta(pasta & "DXF\OBSOLETO\")
                 If dxf_obsoleto = False Then txt_obsoleto = txt_obsoleto & vbNewLine & "DXF"
 
+                If stepFile = True Then
+                    stepObsoleto = verificar_subpasta(pasta & "STEP\OBSOLETO\")
+                    If stepObsoleto = False Then txt_obsoleto = txt_obsoleto & vbNewLine & "STEP"
+                End If
+
                 If txt_obsoleto <> "" Then
                     answer = MsgBox("As seguintes pastas OBSOLETO não existem:" & txt_obsoleto & vbNewLine & vbNewLine & "Criar pastas?", MsgBoxStyle.YesNo)
                     If answer = 6 Then 'YES OBSOLETOS
-                        If edrw_obsoleto = False Then
-                            MkDir(pasta & "3D\OBSOLETO\")
-                        End If
-                        If pdf_obsoleto = False Then
-                            MkDir(pasta & "PDF\OBSOLETO\")
-                        End If
-                        If dxf_obsoleto = False Then
-                            MkDir(pasta & "DXF\OBSOLETO\")
-                        End If
+                        If edrw_obsoleto = False Then MkDir(pasta & "3D\OBSOLETO\")
+                        If pdf_obsoleto = False Then MkDir(pasta & "PDF\OBSOLETO\")
+                        If dxf_obsoleto = False Then MkDir(pasta & "DXF\OBSOLETO\")
+                        If stepFile = True And stepObsoleto = False Then MkDir(pasta & "STEP\OBSOLETO\")
                     Else 'NO OBSOLETOS
                         verificar_pastas = 0
                     End If
@@ -369,6 +401,7 @@ Public Class Form1
         End If
     End Function
 
+
     Function verificar_subpasta(ByVal subpasta As String) As Boolean
         If My.Computer.FileSystem.GetDirectoryInfo(subpasta).Exists = False Then
             verificar_subpasta = False
@@ -376,6 +409,7 @@ Public Class Form1
             verificar_subpasta = True
         End If
     End Function
+
 
     ''' <summary>
     ''' MOVE O FICHEIRO PARA A PASTA DE DESTINO
@@ -508,9 +542,11 @@ Public Class Form1
         Application.DoEvents()
     End Function
 
+
     Sub introduzir_dados(linha As Integer, coluna As String, txt As String)
         DataGridView1.Rows(linha).Cells(coluna).Value = txt
     End Sub
+
 
     Sub backup_folder(ByVal folder As String)
         Dim data, backup_folder, zip_name As String
@@ -524,8 +560,8 @@ Public Class Form1
         End If
 
         System.IO.Compression.ZipFile.CreateFromDirectory(folder & "\", backup_folder & zip_name)
-
     End Sub
+
 
     ''' <summary>
     ''' MUDA A COR DO TEXTO NA DATAGRIDVIEW
@@ -540,6 +576,7 @@ Public Class Form1
         If tipo = 1 Then DataGridView1.Rows(linha).Cells(coluna).Style.ForeColor = Color.Gold
         If tipo = 2 Then DataGridView1.Rows(linha).Cells(coluna).Style.ForeColor = Color.ForestGreen
     End Sub
+
 
     Private Sub DataGridToCSV(dt As DataGridView, ByVal Qualifier As String, ByVal name As String)
         Dim sair_while As Integer = 0
@@ -619,6 +656,7 @@ Public Class Form1
 
     End Sub
 
+
     Function IsFileOpen(ByVal file As String) As Boolean
         Dim stream As FileStream = Nothing
         Dim finfo As FileInfo
@@ -636,10 +674,12 @@ Public Class Form1
         End Try
     End Function
 
+
     Private Shared Function IsFileLocked(exception As Exception) As Boolean
         Dim errorCode As Integer = Marshal.GetHRForException(exception) And ((1 << 16) - 1)
         Return errorCode = 32 OrElse errorCode = 33
     End Function
+
 
     Private Sub clean_DG(dt As DataGridView)
         Dim r, count As Integer
@@ -658,11 +698,13 @@ Public Class Form1
 
     End Sub
 
+
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles Me.Load
         Label2.BackColor = Color.Transparent
         Label2.Text = ""
         '    Label2.BringToFront()
     End Sub
+
 
     Private Sub txt_processing(ByVal txt_name As String)
         Dim old_name, new_name As String
@@ -680,6 +722,7 @@ Public Class Form1
         old_dxfs(2, array_len - 1) = txt_name
     End Sub
 
+
     Private Function search_old_dxfs(ByVal dxf_name As String) As Integer
         Dim i As Integer
 
@@ -692,6 +735,4 @@ Public Class Form1
             End If
         Next
     End Function
-
-
 End Class
